@@ -1,0 +1,20 @@
+# UE Project Base
+.idea/
+.vs/
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+DerivedDataCache/
+Build/
+.vsconfig
+*.sln
+*.sln.DotSettings.user
+# XG Package
+PackageTest/
+# lfs
+hooks/
+lfs/
+
+# Python
+__pycache__
