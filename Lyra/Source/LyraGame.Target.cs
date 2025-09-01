@@ -115,7 +115,7 @@ public class LyraGameTarget : TargetRules
 				Target.bAllowNonUFSIniWhenCooked = false;
 			}
 			
-			//非编辑器模式下
+			//非编辑器模式下（打包完成，不是在开发阶段了
 			if (Target.Type != TargetType.Editor)
 			{
 				// We don't use the path tracer at runtime, only for beauty shots, and this DLL is quite large
@@ -127,6 +127,7 @@ public class LyraGameTarget : TargetRules
 				Target.GlobalDefinitions.Add("UE_ASSETREGISTRY_INDIRECT_ASSETDATA_POINTERS=1");
 			}
 			
+			//配置Gamefeature插件
 			LyraGameTarget.ConfigureGameFeaturePlugins(Target);
 			
 		}
@@ -192,7 +193,7 @@ public class LyraGameTarget : TargetRules
 	}
 	
 	
-	//一个插件名和它的JsonObject的对象,用于获取插件描述信息
+	//一个插件名和它的JsonObject的对象,用于获取插件描述信息【相当于插件的字典，配置启用哪些插件】
 	private static Dictionary<string, JsonObject> AllPluginRootJsonObjectsByName = new Dictionary<string, JsonObject>();
 	
 	
@@ -225,7 +226,7 @@ public class LyraGameTarget : TargetRules
 		
 		foreach (DirectoryReference SearchDir in GameFeaturePluginRoots)
 		{
-			//填充容器
+			//填充容器 将插件文件全部填充为枚举实例
 			CombinedPluginList.AddRange(PluginsBase.EnumeratePlugins(SearchDir));
 		}
 
@@ -341,7 +342,7 @@ public class LyraGameTarget : TargetRules
 						}					
 						
 						// Keep track of plugin references for validation later
-						// 记录插件的引用信息，以便后续进行验证操作
+						// 记录插件的引用信息，也就是.uplugin文件中的Plugins的数组字段【当前插件引用了其他插件的信息】，以便后续进行验证操作
 						JsonObject[] PluginReferencesArray;
 						if (RawObject.TryGetObjectArrayField("Plugins", out PluginReferencesArray))
 						{
@@ -359,6 +360,8 @@ public class LyraGameTarget : TargetRules
 										{
 											AllPluginReferencesByName[ReferencerName] = new List<string>();
 										}
+										
+										//将当前插件遍历到的名为 ReferencerName 的插件 所引用到的plugins插件列表保存到字典
 										AllPluginReferencesByName[ReferencerName].Add(PluginReferenceName);
 									}
 								}
