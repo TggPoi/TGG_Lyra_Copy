@@ -43,6 +43,32 @@ FGameInstancePIEResult ULyraEditorEngine::PreCreatePIEInstances(const bool bAnyB
 	int32& InNumOnlinePIEInstances)
 {
 	//可以在这里设置启动模式，如果启动模式错误就会弹出错误提示
+	if (const ALyraWorldSettings* LyraWorldSettings = Cast<ALyraWorldSettings>(EditorWorld->GetWorldSettings()))
+	{
+		//如果 在编辑器的 启动模式不是Standalone,则弹出错误提示
+		if (LyraWorldSettings->ForceStandaloneNetMode)
+		{
+			EPlayNetMode OutPlayNetMode;
+			PlaySessionRequest->EditorPlaySettings->GetPlayNetMode(OutPlayNetMode);
+			if (OutPlayNetMode != PIE_Standalone)
+			{
+				PlaySessionRequest->EditorPlaySettings->SetPlayNetMode(PIE_Standalone);
+
+				FNotificationInfo Info(LOCTEXT("ForcingStandaloneForFrontend", "Forcing NetMode: Standalone for the Frontend"));
+				Info.ExpireDuration = 2.0f;
+				FSlateNotificationManager::Get().AddNotification(Info);
+			}
+		}
+	}
+	
+	
+	//@TODO: Should add delegates that a *non-editor* module could bind to for PIE start/stop instead of poking directly
+	//@待办事项：应当添加一些委托机制，使得非编辑模块能够绑定这些委托来实现程序启动/停止的功能，而非直接进行操作。
+	//GetDefault<ULyraDeveloperSettings>()->OnPlayInEditorStarted();
+	//GetDefault<ULyraPlatformEmulationSettings>()->OnPlayInEditorStarted();
+
+
+
 	FGameInstancePIEResult Result = Super::PreCreatePIEServerInstance(bAnyBlueprintErrors, bStartInSpectatorMode, PIEStartTime, bSupportsOnlinePIE, InNumOnlinePIEInstances);
 
 	return Result;
