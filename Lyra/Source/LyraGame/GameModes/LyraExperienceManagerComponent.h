@@ -99,7 +99,10 @@ public:
 	UE_API bool IsExperienceLoaded() const;
 
 private:
-
+	//由网络同步过来的Experience从而启动加载,这是客户端的Experience加载启动如果
+	UFUNCTION()
+	void OnRep_CurrentExperience();
+	
 	//开始加载
 	void StartExperienceLoad();
 

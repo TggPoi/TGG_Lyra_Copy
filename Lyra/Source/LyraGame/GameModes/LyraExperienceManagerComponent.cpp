@@ -225,6 +225,12 @@ void ULyraExperienceManagerComponent::SetCurrentExperience(FPrimaryAssetId Exper
 	
 }
 
+void ULyraExperienceManagerComponent::OnRep_CurrentExperience()
+{
+	//从服务器同步过来,开启加载
+	StartExperienceLoad();
+}
+
 void ULyraExperienceManagerComponent::StartExperienceLoad()
 {
 	//必须是正确的初始化状态,不能是空指针,也不能多次加载,要不然就是流程错误
