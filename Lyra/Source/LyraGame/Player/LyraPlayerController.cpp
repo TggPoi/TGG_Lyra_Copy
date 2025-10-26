@@ -38,6 +38,8 @@ namespace Lyra
 {
 	namespace Input
 	{
+		//放在这里只是lyra项目的习惯
+		//对应ULyraDeveloperSettings 中的命令行变量 ShouldAlwaysPlayForceFeedback
 		static int32 ShouldAlwaysPlayForceFeedback = 0;
 		static FAutoConsoleVariableRef CVarShouldAlwaysPlayForceFeedback(TEXT("LyraPC.ShouldAlwaysPlayForceFeedback"),
 																		 ShouldAlwaysPlayForceFeedback,
