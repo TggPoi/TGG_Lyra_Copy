@@ -64,8 +64,8 @@ FGameInstancePIEResult ULyraEditorEngine::PreCreatePIEInstances(const bool bAnyB
 	
 	//@TODO: Should add delegates that a *non-editor* module could bind to for PIE start/stop instead of poking directly
 	//@待办事项：应当添加一些委托机制，使得非编辑模块能够绑定这些委托来实现程序启动/停止的功能，而非直接进行操作。
-	//GetDefault<ULyraDeveloperSettings>()->OnPlayInEditorStarted();
-	//GetDefault<ULyraPlatformEmulationSettings>()->OnPlayInEditorStarted();
+	GetDefault<ULyraDeveloperSettings>()->OnPlayInEditorStarted();
+	GetDefault<ULyraPlatformEmulationSettings>()->OnPlayInEditorStarted();
 
 
 
