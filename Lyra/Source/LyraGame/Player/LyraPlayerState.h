@@ -56,7 +56,7 @@ enum class ELyraPlayerConnectionType : uint8
  *	本项目所使用的基础玩家状态类。
  */
 UCLASS(MinimalAPI, Config = Game)
-class ALyraPlayerState : public AModularPlayerState
+class ALyraPlayerState : public AModularPlayerState,  public ILyraTeamAgentInterface
 {
 	GENERATED_BODY()
 
@@ -77,6 +77,54 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Lyra|PlayerState")
 	UE_API ALyraPlayerController* GetLyraPlayerController() const;
 
+
+	//~ILyraTeamAgentInterface interface
+	// 设置队伍ID
+	UE_API virtual void SetGenericTeamId(const FGenericTeamId& NewTeamID) override;
+	// 获取队伍ID
+	UE_API virtual FGenericTeamId GetGenericTeamId() const override;
+	UE_API virtual FOnLyraTeamIndexChangedDelegate* GetOnTeamIndexChangedDelegate() override;
+	//~End of ILyraTeamAgentInterface interface
+
+	/** Returns the Squad ID of the squad the player belongs to. */
+	/** 返回玩家所属小队的编号。*/
+	UFUNCTION(BlueprintCallable)
+	int32 GetSquadId() const
+	{
+		return MySquadID;
+	}
+
+	/** Returns the Team ID of the team the player belongs to. */
+	/** 返回玩家所属团队的团队 ID 。*/
+	UFUNCTION(BlueprintCallable)
+	int32 GetTeamId() const
+	{
+		return GenericTeamIdToInteger(MyTeamID);
+	}
+	// 设置小队编号
+	UE_API void SetSquadID(int32 NewSquadID);
+
+private:
+	// 队伍发生改变的代理
+	UPROPERTY()
+	FOnLyraTeamIndexChangedDelegate OnTeamChangedDelegate;
+	
+	// 队伍ID
+	UPROPERTY(ReplicatedUsing=OnRep_MyTeamID)
+	FGenericTeamId MyTeamID;
+
+	// 子战队ID
+	UPROPERTY(ReplicatedUsing=OnRep_MySquadID)
+	int32 MySquadID;
+	
+private:
+	// 通知队伍发生了改变
+	UFUNCTION()
+	UE_API void OnRep_MyTeamID(FGenericTeamId OldTeamID);
+
+	// 暂无功能
+	UFUNCTION()
+	UE_API void OnRep_MySquadID();
 
 };
 
