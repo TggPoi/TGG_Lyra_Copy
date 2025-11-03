@@ -26,6 +26,7 @@ class UObject;
 struct FFrame;
 struct FGameplayTag;
 
+
 /** Defines the types of client connected */
 /** 定义已连接客户端的类型 */
 UENUM()
@@ -77,6 +78,33 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Lyra|PlayerState")
 	UE_API ALyraPlayerController* GetLyraPlayerController() const;
 
+	//~AActor interface
+	// 执行父类 暂无作用
+	UE_API virtual void PreInitializeComponents() override;
+	// 执行父类 初始化ASC的ActorInfo 然后绑定体验加载完成回调
+	UE_API virtual void PostInitializeComponents() override;
+	//~End of AActor interface
+
+	
+	//~APlayerState interface 也可以使用 #pragma region 和 #pragma endregion 来分组
+	/** 将角色重置至初始状态 - 用于在不重新加载的情况下重新开始关卡时使用。*/
+	UE_API virtual void Reset() override;
+	
+	/** 当控制器的玩家状态首次进行复制时，会调用此方法。*/
+	UE_API virtual void ClientInitialize(AController* C) override;
+
+	/** 复制需要保存在非活动玩家状态中的属性 */
+	UE_API virtual void CopyProperties(APlayerState* PlayerState) override;
+	
+	/** 当拥有该玩家状态的玩家断开连接时，服务器会调用此方法，通常情况下此方法会销毁该玩家状态 */
+	// 计划添加到体验中 是否开启支持自动摧毁玩家状态
+	UE_API virtual void OnDeactivated() override;
+	
+	/** 当拥有该玩家状态的玩家重新连接后，服务器会调用此函数，并将此玩家状态添加到活跃玩家数组中 */
+	// 切换到玩家链接为活跃状态
+	UE_API virtual void OnReactivated() override;
+	
+	//~End of APlayerState interface
 
 	//~ILyraTeamAgentInterface interface
 	// 设置队伍ID
@@ -86,6 +114,12 @@ public:
 	UE_API virtual FOnLyraTeamIndexChangedDelegate* GetOnTeamIndexChangedDelegate() override;
 	//~End of ILyraTeamAgentInterface interface
 
+	// 设置玩家链接类型
+	UE_API void SetPlayerConnectionType(ELyraPlayerConnectionType NewType);
+	
+	// 获取玩家链接类型
+	ELyraPlayerConnectionType GetPlayerConnectionType() const { return MyPlayerConnectionType; }
+	
 	/** Returns the Squad ID of the squad the player belongs to. */
 	/** 返回玩家所属小队的编号。*/
 	UFUNCTION(BlueprintCallable)
@@ -104,7 +138,31 @@ public:
 	// 设置小队编号
 	UE_API void SetSquadID(int32 NewSquadID);
 
+	/*
+	 * Send a message to just this player
+	 * (use only for client notifications like accolades, quest toasts, etc... that can handle being occasionally lost)
+	 * 向仅此一位玩家发送消息
+	 * 仅用于客户端通知，例如荣誉奖励、任务庆祝信息等，这类信息偶尔丢失也是可以接受的）
+	 *
+	 * 服务器调用,客户端执行
+	 */
+	UFUNCTION(Client, Unreliable, BlueprintCallable, Category = "Lyra|PlayerState")
+	UE_API void ClientBroadcastMessage(const FLyraVerbMessage Message);
+
+	// Gets the replicated view rotation of this player, used for spectating
+	// 获取此玩家的复制视图旋转角度，用于旁观模式使用
+	UE_API FRotator GetReplicatedViewRotation() const;
+
+	// Sets the replicated view rotation, only valid on the server
+	// 设置复制视图的旋转角度，仅在服务器端有效 由控制器从PlayerTick中调用
+	UE_API void SetReplicatedViewRotation(const FRotator& NewRotation);
+
 private:
+
+	// 玩家链接的类型需要进行网络同步
+	UPROPERTY(Replicated)
+	ELyraPlayerConnectionType MyPlayerConnectionType;
+	
 	// 队伍发生改变的代理
 	UPROPERTY()
 	FOnLyraTeamIndexChangedDelegate OnTeamChangedDelegate;
@@ -116,6 +174,10 @@ private:
 	// 子战队ID
 	UPROPERTY(ReplicatedUsing=OnRep_MySquadID)
 	int32 MySquadID;
+
+	// 用于观战的同步角度
+	UPROPERTY(Replicated)
+	FRotator ReplicatedViewRotation;
 	
 private:
 	// 通知队伍发生了改变

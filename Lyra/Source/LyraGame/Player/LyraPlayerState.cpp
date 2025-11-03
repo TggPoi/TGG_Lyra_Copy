@@ -29,14 +29,103 @@ class FLifetimeProperty;
 
 ALyraPlayerState::ALyraPlayerState(const FObjectInitializer& ObjectInitializer)
 	:Super(ObjectInitializer)
+	, MyPlayerConnectionType(ELyraPlayerConnectionType::Player)
 {
 
+	MyTeamID = FGenericTeamId::NoTeam;
+	MySquadID = INDEX_NONE;
+}
 
+void ALyraPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	FDoRepLifetimeParams SharedParams;
+	/** 此属性是否采用推送模型。请参阅 PushModel.h 文件 */
+	SharedParams.bIsPushBased = true;
+	
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, MyPlayerConnectionType, SharedParams)
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, MyTeamID, SharedParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, MySquadID, SharedParams);
+	
+	// 跳过拥有者
+	SharedParams.Condition = ELifetimeCondition::COND_SkipOwner;
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, ReplicatedViewRotation, SharedParams);
+	
 }
 
 ALyraPlayerController* ALyraPlayerState::GetLyraPlayerController() const
 {
 	return Cast<ALyraPlayerController>(GetOwner());
+}
+
+void ALyraPlayerState::Reset()
+{
+	Super::Reset();
+}
+
+void ALyraPlayerState::ClientInitialize(AController* C)
+{
+	Super::ClientInitialize(C);
+	
+	//@XGTODO:这块内容需要等角色初始化的过程时完善 等待所有组件都初始化完毕，当一个组件初始化完成时要发出通知，然后检查是否还有组件没有初始化完成，如果有，则等待，如果没有，则继续初始化下一个组件
+	/*if (ULyraPawnExtensionComponent* PawnExtComp = ULyraPawnExtensionComponent::FindPawnExtensionComponent(GetPawn()))
+	{
+		PawnExtComp->CheckDefaultInitialization();
+	}*/
+
+	
+}
+
+void ALyraPlayerState::CopyProperties(APlayerState* PlayerState)
+{
+	Super::CopyProperties(PlayerState);
+
+	//@TODO: Copy stats
+	//@待办事项：复制统计数据
+}
+
+void ALyraPlayerState::OnDeactivated()
+{
+	// 是否需要设置 失去链接之后摧毁PlayerState
+	bool bDestroyDeactivatedPlayerState = false;
+	
+	switch (GetPlayerConnectionType())
+	{
+	case ELyraPlayerConnectionType::Player:
+	case ELyraPlayerConnectionType::InactivePlayer:
+		//@TODO: Ask the experience if we should destroy disconnecting players immediately or leave them around
+		// (e.g., for long running servers where they might build up if lots of players cycle through)
+
+		//@待办事项：询问体验，我们是应该立即驱逐正在断开连接的玩家，还是让他们继续留在系统中
+		// （例如，在长时间运行的服务器中，如果有很多玩家频繁上线和下线，他们可能会累积起来）
+		bDestroyDeactivatedPlayerState = true;
+				
+		break;
+		
+	default:
+		bDestroyDeactivatedPlayerState = true;
+		break;
+		
+		
+	}
+	
+	SetPlayerConnectionType(ELyraPlayerConnectionType::InactivePlayer);
+
+	if (bDestroyDeactivatedPlayerState)
+	{
+		Destroy();
+	}
+
+}
+
+void ALyraPlayerState::OnReactivated()
+{
+	if (GetPlayerConnectionType() == ELyraPlayerConnectionType::InactivePlayer)
+	{
+		SetPlayerConnectionType(ELyraPlayerConnectionType::Player);
+	}
+	
 }
 
 void ALyraPlayerState::SetGenericTeamId(const FGenericTeamId& NewTeamID)
@@ -66,6 +155,14 @@ FOnLyraTeamIndexChangedDelegate* ALyraPlayerState::GetOnTeamIndexChangedDelegate
 	return &OnTeamChangedDelegate;
 }
 
+void ALyraPlayerState::SetPlayerConnectionType(ELyraPlayerConnectionType NewType)
+{
+	// 标记指定的属性为“脏”状态，需提供类名、属性名以及对象。若该属性或类无效，则此操作将无法编译通过。
+	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, MyPlayerConnectionType, this);
+	MyPlayerConnectionType = NewType;
+	
+}
+
 void ALyraPlayerState::SetSquadID(int32 NewSquadID)
 {
 	// 只允许在权威性角色上进行切换
@@ -75,6 +172,17 @@ void ALyraPlayerState::SetSquadID(int32 NewSquadID)
 		MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, MySquadID, this);
 
 		MySquadID = NewSquadID;
+	}
+	
+}
+
+void ALyraPlayerState::ClientBroadcastMessage_Implementation(const FLyraVerbMessage Message)
+{
+	// This check is needed to prevent running the action when in standalone mode
+	// 此检查是为了防止在独立模式下执行该操作而设置的。
+	if (GetNetMode() == NM_Client)
+	{
+		UGameplayMessageSubsystem::Get(this).BroadcastMessage(Message.Verb, Message);
 	}
 	
 }
