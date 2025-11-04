@@ -269,6 +269,44 @@ void ALyraPlayerState::SetSquadID(int32 NewSquadID)
 	
 }
 
+void ALyraPlayerState::AddStatTagStack(FGameplayTag Tag, int32 StackCount)
+{
+	StatTags.AddStack(Tag, StackCount);
+}
+
+void ALyraPlayerState::RemoveStatTagStack(FGameplayTag Tag, int32 StackCount)
+{
+	StatTags.RemoveStack(Tag, StackCount);
+}
+
+int32 ALyraPlayerState::GetStatTagStackCount(FGameplayTag Tag) const
+{
+	return StatTags.GetStackCount(Tag);
+}
+
+bool ALyraPlayerState::HasStatTag(FGameplayTag Tag) const
+{
+	return StatTags.ContainsTag(Tag);
+}
+
+FRotator ALyraPlayerState::GetReplicatedViewRotation() const
+{
+	// Could replace this with custom replication
+	// 可以用自定义复制功能来替代它
+	return ReplicatedViewRotation;
+}
+
+void ALyraPlayerState::SetReplicatedViewRotation(const FRotator& NewRotation)
+{
+	// 如果传入的角度发生了改变
+	if (NewRotation != ReplicatedViewRotation)
+	{
+		// 标记为脏
+		MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, ReplicatedViewRotation, this);
+		ReplicatedViewRotation = NewRotation;
+	}
+}
+
 void ALyraPlayerState::OnExperienceLoaded(const ULyraExperienceDefinition* CurrentExperience)
 {
 	// 服务器才有GameMode

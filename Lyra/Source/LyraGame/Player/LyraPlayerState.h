@@ -152,6 +152,26 @@ public:
 	// 设置小队编号
 	UE_API void SetSquadID(int32 NewSquadID);
 
+	// Adds a specified number of stacks to the tag (does nothing if StackCount is below 1)
+	// 向标签中添加指定数量的堆栈（若堆栈数量少于 1，则不执行任何操作）
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category=Teams)
+	UE_API void AddStatTagStack(FGameplayTag Tag, int32 StackCount);
+
+	// Removes a specified number of stacks from the tag (does nothing if StackCount is below 1)
+	// 从标签中移除指定数量的堆栈（若“堆栈数量”小于 1，则不执行任何操作）
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category=Teams)
+	UE_API void RemoveStatTagStack(FGameplayTag Tag, int32 StackCount);
+
+	// Returns the stack count of the specified tag (or 0 if the tag is not present)
+	// 返回指定标签的栈数量（若该标签不存在则返回 0）
+	UFUNCTION(BlueprintCallable, Category=Teams)
+	UE_API int32 GetStatTagStackCount(FGameplayTag Tag) const;
+
+	// Returns true if there is at least one stack of the specified tag
+	// 如果存在指定标签的至少一个栈，则返回 true
+	UFUNCTION(BlueprintCallable, Category=Teams)
+	UE_API bool HasStatTag(FGameplayTag Tag) const;
+
 	/*
 	 * Send a message to just this player
 	 * (use only for client notifications like accolades, quest toasts, etc... that can handle being occasionally lost)
@@ -227,6 +247,10 @@ private:
 	// 子战队ID
 	UPROPERTY(ReplicatedUsing=OnRep_MySquadID)
 	int32 MySquadID;
+
+	// Tag的容器
+	UPROPERTY(Replicated)
+	FGameplayTagStackContainer StatTags;
 
 	// 用于观战的同步角度
 	UPROPERTY(Replicated)
