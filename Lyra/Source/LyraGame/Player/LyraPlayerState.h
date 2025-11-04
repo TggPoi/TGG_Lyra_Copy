@@ -57,7 +57,7 @@ enum class ELyraPlayerConnectionType : uint8
  *	本项目所使用的基础玩家状态类。
  */
 UCLASS(MinimalAPI, Config = Game)
-class ALyraPlayerState : public AModularPlayerState,  public ILyraTeamAgentInterface
+class ALyraPlayerState : public AModularPlayerState, public IAbilitySystemInterface, public ILyraTeamAgentInterface
 {
 	GENERATED_BODY()
 
@@ -72,12 +72,26 @@ public:
 	 */
 	UE_API ALyraPlayerState(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
-	
-
 	//获取玩家控制器
 	UFUNCTION(BlueprintCallable, Category = "Lyra|PlayerState")
 	UE_API ALyraPlayerController* GetLyraPlayerController() const;
 
+	// 获取 LyraASC 该组件通过构造函数创建
+	UFUNCTION(BlueprintCallable, Category = "Lyra|PlayerState")
+	ULyraAbilitySystemComponent* GetLyraAbilitySystemComponent() const { return AbilitySystemComponent; }
+	// 这是IAbilitySystemInterface的重写方法 返回成员变量即可
+	UE_API virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	//要发送的事件名称
+	static UE_API const FName NAME_LyraAbilityReady;
+
+	// 获取PawnData
+	template <class T>
+	const T* GetPawnData() const { return Cast<T>(PawnData); }
+
+	// 在[服务器]得Experience加载完成之后,设置PawnData,然后通过网络同步到客户端
+	UE_API void SetPawnData(const ULyraPawnData* InPawnData);
+	
 	//~AActor interface
 	// 执行父类 暂无作用
 	UE_API virtual void PreInitializeComponents() override;
@@ -157,8 +171,47 @@ public:
 	// 设置复制视图的旋转角度，仅在服务器端有效 由控制器从PlayerTick中调用
 	UE_API void SetReplicatedViewRotation(const FRotator& NewRotation);
 
-private:
 
+private:
+	/*
+	 * 在初始化的过程中绑定执行等待体验加载完毕后,读取设置PawnData
+	 * PostInitializeComponents中绑定
+	 * 
+	 */
+	UE_API void OnExperienceLoaded(const ULyraExperienceDefinition* CurrentExperience);
+
+	
+protected:
+
+	// 暂无功能
+	UFUNCTION()
+	UE_API void OnRep_PawnData();
+	
+protected:
+
+	// 客户端这个变量需要从网络同步过来
+	UPROPERTY(ReplicatedUsing = OnRep_PawnData)
+	TObjectPtr<const ULyraPawnData> PawnData;
+
+	
+private:
+	
+	// The ability system component sub-object used by player characters.
+	// 用于玩家角色的“能力系统”子组件。
+	UPROPERTY(VisibleAnywhere, Category = "Lyra|PlayerState")
+	TObjectPtr<ULyraAbilitySystemComponent> AbilitySystemComponent;
+	
+	// Health attribute set used by this actor.
+	// 该角色所使用的健康属性设定。
+	/*UPROPERTY()
+	TObjectPtr<const class ULyraHealthSet> HealthSet;*/
+	
+	// Combat attribute set used by this actor.
+	// 此角色所使用的战斗属性设定。
+	/*UPROPERTY()
+	TObjectPtr<const class ULyraCombatSet> CombatSet;*/
+
+	
 	// 玩家链接的类型需要进行网络同步
 	UPROPERTY(Replicated)
 	ELyraPlayerConnectionType MyPlayerConnectionType;

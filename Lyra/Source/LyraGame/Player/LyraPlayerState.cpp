@@ -27,11 +27,24 @@ class AController;
 class APlayerState;
 class FLifetimeProperty;
 
+const FName ALyraPlayerState::NAME_LyraAbilityReady("LyraAbilitiesReady");
+
 ALyraPlayerState::ALyraPlayerState(const FObjectInitializer& ObjectInitializer)
 	:Super(ObjectInitializer)
 	, MyPlayerConnectionType(ELyraPlayerConnectionType::Player)
 {
+	AbilitySystemComponent = ObjectInitializer.CreateDefaultSubobject<ULyraAbilitySystemComponent>(this, TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
+	//@XGTODO:这部分内容需要到GAS章节去写
+	// These attribute sets will be detected by AbilitySystemComponent::InitializeComponent. Keeping a reference so that the sets don't get garbage collected before that.
+	/*HealthSet = CreateDefaultSubobject<ULyraHealthSet>(TEXT("HealthSet"));
+	CombatSet = CreateDefaultSubobject<ULyraCombatSet>(TEXT("CombatSet"));*/
+	
+	// AbilitySystemComponent needs to be updated at a high frequency.
+	SetNetUpdateFrequency(100.0f);
+	
 	MyTeamID = FGenericTeamId::NoTeam;
 	MySquadID = INDEX_NONE;
 }
@@ -43,7 +56,8 @@ void ALyraPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	FDoRepLifetimeParams SharedParams;
 	/** 此属性是否采用推送模型。请参阅 PushModel.h 文件 */
 	SharedParams.bIsPushBased = true;
-	
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, PawnData, SharedParams);
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, MyPlayerConnectionType, SharedParams)
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, MyTeamID, SharedParams);
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, MySquadID, SharedParams);
@@ -57,6 +71,85 @@ void ALyraPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 ALyraPlayerController* ALyraPlayerState::GetLyraPlayerController() const
 {
 	return Cast<ALyraPlayerController>(GetOwner());
+}
+
+UAbilitySystemComponent* ALyraPlayerState::GetAbilitySystemComponent() const
+{
+	return GetLyraAbilitySystemComponent();
+}
+
+void ALyraPlayerState::SetPawnData(const ULyraPawnData* InPawnData)
+{
+	// 输入的PawnData必须有效
+	check(InPawnData);
+
+	// 这个角色必须具有权威性 否则不生效
+	if (GetLocalRole() != ROLE_Authority)
+	{
+		return;
+	}
+
+	//这个函数应该只会在初始化阶段调用一次，因此这里的PawnData应该是空的，如果有值说明初始化流程出问题了
+	if (PawnData)
+	{
+		UE_LOG(LogLyra, Error, TEXT(" ing to set PawnData [%s] on player state [%s] that already has valid PawnData [%s]."), *GetNameSafe(InPawnData), *GetNameSafe(this), *GetNameSafe(PawnData));
+		return;
+	}
+	
+	// 标记数据为脏
+	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, PawnData, this);
+	PawnData = InPawnData;
+
+	// 通过PawnData 注册能力集
+	//@XGTODO: 在讲GAS前 这块需要注释掉
+	/*for (const ULyraAbilitySet* AbilitySet : PawnData->AbilitySets)
+	{
+		if (AbilitySet)
+		{
+			AbilitySet->GiveToAbilitySystem(AbilitySystemComponent, nullptr);
+		}
+	}*/
+	
+	// 发送框架事件 GAS注册完毕!
+	// 官方文档 (Lyra角色的总体初始化时间轴)：https://dev.epicgames.com/documentation/zh-cn/unreal-engine/game-framework-component-manager-in-unreal-engine?application_version=5.5
+	UGameFrameworkComponentManager::SendGameFrameworkComponentExtensionEvent(this, NAME_LyraAbilityReady);
+	
+	/** 强制将角色信息更新至客户端/演示网络驱动程序 */
+	ForceNetUpdate();
+}
+
+void ALyraPlayerState::PreInitializeComponents()
+{
+	Super::PreInitializeComponents();
+}
+
+void ALyraPlayerState::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	check(AbilitySystemComponent);
+
+	// 初始化ASC组件
+	// 逻辑实际拥有者 是PlayerState
+	// 替身操作者 是控制得Pawn
+	AbilitySystemComponent->InitAbilityActorInfo(this, GetPawn());
+
+
+	UWorld* World = GetWorld();
+	// 世界必须存在,网络模式不能是客户端,因为客户端需要由服务器属性同步过去
+	if (World && World->IsGameWorld() && World->GetNetMode() != NM_Client)
+	{
+		AGameStateBase* GameState = GetWorld()->GetGameState();
+		check(GameState);
+		
+		ULyraExperienceManagerComponent* ExperienceComponent = GameState->FindComponentByClass<ULyraExperienceManagerComponent>();
+		check(ExperienceComponent);
+		
+		// 绑定体验加载完成之后需要执行的函数
+		ExperienceComponent->CallOrRegister_OnExperienceLoaded(FOnLyraExperienceLoaded::FDelegate::CreateUObject(this, &ThisClass::OnExperienceLoaded));
+
+		
+	}
 }
 
 void ALyraPlayerState::Reset()
@@ -174,6 +267,30 @@ void ALyraPlayerState::SetSquadID(int32 NewSquadID)
 		MySquadID = NewSquadID;
 	}
 	
+}
+
+void ALyraPlayerState::OnExperienceLoaded(const ULyraExperienceDefinition* CurrentExperience)
+{
+	// 服务器才有GameMode
+	if (ALyraGameMode* LyraGameMode = GetWorld()->GetAuthGameMode<ALyraGameMode>())
+	{
+		// 通过控制器获取PawnData
+		if (const ULyraPawnData* NewPawnData = LyraGameMode->GetPawnDataForController(GetOwningController()))
+		{
+			SetPawnData(NewPawnData);
+		}
+		else
+		{
+			UE_LOG(LogLyra, Error, TEXT("ALyraPlayerState::OnExperienceLoaded(): Unable to find PawnData to initialize player state [%s]!"), *GetNameSafe(this));
+
+		}
+
+	}
+}
+
+void ALyraPlayerState::OnRep_PawnData()
+{
+	// 目前没有需要同步后执行的操作
 }
 
 void ALyraPlayerState::ClientBroadcastMessage_Implementation(const FLyraVerbMessage Message)

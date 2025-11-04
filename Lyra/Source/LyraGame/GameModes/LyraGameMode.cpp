@@ -56,11 +56,12 @@ const ULyraPawnData* ALyraGameMode::GetPawnDataForController(const AController* 
 		// AI控制器也会有PlayerState,通过其的构造函数开启
 		if (const ALyraPlayerState* LyraPS = InController->GetPlayerState<ALyraPlayerState>())
 		{
-			//还没有实现
-			// if (const ULyraPawnData* PawnData = LyraPS->GetPawnData<ULyraPawnData>())
-			// {
-			// 	return PawnData;
-			// }
+			//第一次进入游戏的时候,PlayerState的PawnData是空的,需要读取配置进行初始化，需要走下面的逻辑
+			//第二次进入游戏的时候,PlayerState的PawnData是已经初始化的,不需要从服务器初始化,直接从PlayerState上取就好了
+			if (const ULyraPawnData* PawnData = LyraPS->GetPawnData<ULyraPawnData>())
+			{
+				return PawnData;
+			}
 		}
 	}
 
