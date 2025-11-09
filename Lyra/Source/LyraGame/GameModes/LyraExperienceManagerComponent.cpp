@@ -608,7 +608,7 @@ void ULyraExperienceManagerComponent::OnExperienceFullLoadCompleted()
 	// 应用任何必要的扩展性设置
 	
 // #if !UE_SERVER 还不需要实现，在客户端进行图形，音频设置
-// 	ULyraSettingsLocal::Get()->OnExperienceLoaded();
+ 	ULyraSettingsLocal::Get()->OnExperienceLoaded();
 // #endif
 	
 }

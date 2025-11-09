@@ -157,13 +157,12 @@ bool ALyraPlayerController::ShouldRecordClientReplay()
 		// 如果可行的话，现在就检查一下设置吧
 		if (const ULyraLocalPlayer* LyraLocalPlayer = Cast<ULyraLocalPlayer>(GetLocalPlayer()))
 		{
-
-			//TODO 待完成
+			
 			//004:从本地游戏设置从读取是否自动记录回放功能
-			// if (LyraLocalPlayer->GetLocalSettings()->ShouldAutoRecordReplays())
-			// {
-			// 	return true;
-			// }
+			if (LyraLocalPlayer->GetLocalSettings()->ShouldAutoRecordReplays())
+			{
+			 	return true;
+			}
 			
 		}
 		
@@ -453,15 +452,12 @@ void ALyraPlayerController::SetPlayer(UPlayer* InPlayer)
 	if (const ULyraLocalPlayer* LyraLocalPlayer = Cast<ULyraLocalPlayer>(InPlayer))
 	{
 
-		//TODO  待完成
-		//ULyraSettingsShared* UserSettings = LyraLocalPlayer->GetSharedSettings();
-		//UserSettings->OnSettingChanged.AddUObject(this, &ThisClass::OnSettingsChanged);
+		
+		ULyraSettingsShared* UserSettings = LyraLocalPlayer->GetSharedSettings();
+		UserSettings->OnSettingChanged.AddUObject(this, &ThisClass::OnSettingsChanged);
 				
-		//OnSettingsChanged(UserSettings);
+		OnSettingsChanged(UserSettings);
 	}
-
-
-	
 }
 
 void ALyraPlayerController::AddCheats(bool bForce)
@@ -703,9 +699,7 @@ void ALyraPlayerController::BroadcastOnPlayerStateChanged()
 
 void ALyraPlayerController::OnSettingsChanged(ULyraSettingsShared* InSettings)
 {
-
-	//TODO 待完成
-	//bForceFeedbackEnabled = InSettings->GetForceFeedbackEnabled();
+	bForceFeedbackEnabled = InSettings->GetForceFeedbackEnabled();
 }
 
 void ALyraPlayerController::OnStartAutoRun()

@@ -45,4 +45,22 @@ public:
 
 	static ULyraSettingsLocal* Get();
 
+	// 这个方法在ExperienceManagerComponent里面体验完全加载后调用
+	void OnExperienceLoaded();
+
+public:
+	
+	// 定义音频设备切换的代理
+	DECLARE_EVENT_OneParam(ULyraSettingsLocal, FAudioDeviceChanged, const FString& /*DeviceId*/);
+
+	// 音频设备变换的代理
+	FAudioDeviceChanged OnAudioOutputDeviceChanged;
+
+	// Replays
+	// 回放
+public:
+	// 是否自动记录回放
+	UFUNCTION()
+	bool ShouldAutoRecordReplays() const { return false; }
+
 };

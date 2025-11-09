@@ -117,9 +117,8 @@ ULyraGameInstance::ULyraGameInstance(const FObjectInitializer& ObjectInitializer
 
 ALyraPlayerController* ULyraGameInstance::GetPrimaryPlayerController() const
 {
-	//ALyraPlayerController类还没实现
-	//return Cast<ALyraPlayerController>(Super::GetPrimaryPlayerController(false));
-	return nullptr;
+	//
+	return Cast<ALyraPlayerController>(Super::GetPrimaryPlayerController(false));
 
 }
 
@@ -144,22 +143,22 @@ void ULyraGameInstance::HandlerUserInitialized(const UCommonUserInfo* UserInfo, 
 {
 	Super::HandlerUserInitialized(UserInfo, bSuccess, Error, RequestedPrivilege, OnlineContext);
 
-	//TODO : 完成游戏基础类后回来补全
+	
 	// If login succeeded, tell the local player to load their settings
 	// 如果登录成功，就告知本地玩家加载他们的设置
-	// if (bSuccess && ensure(UserInfo))
-	// {
-	//
-	// 	ULyraLocalPlayer* LocalPlayer = Cast<ULyraLocalPlayer>(GetLocalPlayerByIndex(UserInfo->LocalPlayerIndex));
-	//
-	// 	// There will not be a local player attached to the dedicated server user
-	// 	// 专用服务器用户不会关联本地玩家。
-	// 	if (LocalPlayer)
-	// 	{
-	// 		
-	// 		LocalPlayer->LoadSharedSettingsFromDisk();
-	// 	}
-	// }
+	if (bSuccess && ensure(UserInfo))
+	{
+	
+		ULyraLocalPlayer* LocalPlayer = Cast<ULyraLocalPlayer>(GetLocalPlayerByIndex(UserInfo->LocalPlayerIndex));
+	
+		// There will not be a local player attached to the dedicated server user
+		// 专用服务器用户不会关联本地玩家。
+		if (LocalPlayer)
+		{
+			
+			LocalPlayer->LoadSharedSettingsFromDisk();
+		}
+	}
 }
 
 void ULyraGameInstance::ReceivedNetworkEncryptionToken(const FString& EncryptionToken,
